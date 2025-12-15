@@ -9,6 +9,8 @@ class RxNormService
 {
     private const BASE_URL = 'https://rxnav.nlm.nih.gov/REST';
 
+    //considering we can have multiple drugs with the same name, we are returning the top 5 results
+    // also the cache results for 10 minutes here bcz the search api can chnage often
     public function searchDrugs(string $drugName): array
     {
         $trimmed = trim($drugName);
@@ -40,20 +42,20 @@ class RxNormService
         });
     }
 
-    public function validateRxcui(string $rxcui): bool
+    public function checkRxcui(string $rxcui): bool
     {
         $id = trim($rxcui);
 
-        return Cache::remember("rxnorm:valid:{$id}", now()->addDay(), function () use ($id): bool {
-            $response = Http::get(self::BASE_URL."/rxcui/{$id}.json");
+        // v2 key to avoid stale cached values from previous implementation
+        return Cache::remember("rxnorm:check:{$id}", now()->addDay(), function () use ($id): bool {
+            // Treat an RXCUI as valid if the properties endpoint returns data
+            $response = Http::get(self::BASE_URL."/rxcui/{$id}/properties.json");
 
             if (! $response->successful()) {
                 return false;
             }
 
-            $ids = $response->json('idGroup.rxnormId', []);
-
-            return in_array($id, (array) $ids, true);
+            return ! empty($response->json('properties'));
         });
     }
 

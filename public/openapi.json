@@ -1,0 +1,207 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Drug Search & Medication API",
+    "version": "1.0.0",
+    "description": "RxNorm search and user medication management"
+  },
+  "servers": [
+    { "url": "http://localhost:8000" }
+  ],
+  "paths": {
+    "/api/register": {
+      "post": {
+        "summary": "Register user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created", "content": { "application/json": {} } },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "summary": "Login user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token issued", "content": { "application/json": {} } },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "Search drugs (public, throttled)",
+        "parameters": [
+          { "name": "drug_name", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DrugResult" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": { "description": "Rate limited" }
+        }
+      }
+    },
+    "/api/medications": {
+      "get": {
+        "summary": "List user medications",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Medication" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Add or update medication",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "rxcui": { "type": "string" } },
+                "required": ["rxcui"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Medication" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "422": { "description": "Invalid RXCUI" }
+        }
+      }
+    },
+    "/api/medications/{rxcui}": {
+      "delete": {
+        "summary": "Delete medication",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "rxcui", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 }
+        },
+        "required": ["name", "email", "password"]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        },
+        "required": ["email", "password"]
+      },
+      "DrugResult": {
+        "type": "object",
+        "properties": {
+          "rxcui": { "type": "string" },
+          "name": { "type": "string" },
+          "ingredient_base_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "dose_form_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "Medication": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "rxcui": { "type": "string" },
+          "name": { "type": "string" },
+          "ingredient_base_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "dose_form_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
+

@@ -30,7 +30,7 @@ class MedicationController extends Controller
 
         $rxcui = $validated['rxcui'];
 
-        if (! $this->rxNormService->validateRxcui($rxcui)) {
+        if (! $this->rxNormService->checkRxcui($rxcui)) {
             return response()->json([
                 'message' => 'Invalid RXCUI provided.',
             ], 422);
