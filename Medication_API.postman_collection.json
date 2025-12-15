@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "Medication API (Laravel + RxNorm)",
+    "_postman_id": "c5c1e0c4-0000-0000-0000-medicationapi",
+    "description": "REST API for registering and logging in users with Laravel Sanctum, searching medications via the public RxNorm API, and managing a user’s saved medications.\n\nAuth: Personal access tokens (Sanctum) via /api/register and /api/login.\nBase URL: set {{base_url}} to your API root, e.g. http://localhost:8000/api.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Accept", "value": "application/json"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": ["{{base_url}}"],
+              "path": ["register"]
+            },
+            "description": "Register a new user and receive a personal access token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Register returns 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.environment.set(\"token\", json.token);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.log('Unable to parse JSON or set token', e);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Accept", "value": "application/json"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            },
+            "description": "Login with existing user credentials and receive a personal access token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login returns 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "try {",
+                  "    var json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.environment.set(\"token\", json.token);",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.log('Unable to parse JSON or set token', e);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public Drug Search",
+      "item": [
+        {
+          "name": "Search Drugs (Public, Rate Limited)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/search?drug_name={{drug_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                {"key": "drug_name", "value": "ibuprofen", "description": "Name (or partial) of the drug to search."}
+              ]
+            },
+            "description": "Search for drugs by name using the RxNorm API. Public endpoint protected by throttle:public-search."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Search returns 200 or 429 (rate limited)\", function () {",
+                  "    pm.expect([200, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Medications (Protected)",
+      "item": [
+        {
+          "name": "List Medications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/medications",
+              "host": ["{{base_url}}"],
+              "path": ["medications"]
+            },
+            "description": "List medications for the authenticated user. Requires Bearer {{token}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"List medications returns 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add / Update Medication",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/medications",
+              "host": ["{{base_url}}"],
+              "path": ["medications"]
+            },
+            "description": "Add a new medication or update an existing one for the authenticated user by RXCUI.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rxcui\": \"12345\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Create/Update medication returns 201 or 422\", function () {",
+                  "    pm.expect([201, 422]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Medication",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/medications/{{rxcui}}",
+              "host": ["{{base_url}}"],
+              "path": ["medications", "{{rxcui}}"]
+            },
+            "description": "Delete a medication for the authenticated user by RXCUI."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Delete medication returns 200 or 404\", function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
